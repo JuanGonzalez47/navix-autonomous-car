@@ -1,25 +1,29 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "pico/stdlib.h"
-#include "hardware/sync.h"
 #include "servo.h"
+#include "hardware/sync.h"
 
-// La interrupción ahora es el "motor" del movimiento
-bool timer_callback(struct repeating_timer *t) {
-    servo_update_sweep(); // conectamos directamente al cambio del angulo segun el apso para el barrido
-    return true;
-}
+// Declaramos la variable externa para poder leerla en el main
+extern volatile bool g_flag_timer_servo; 
+extern volatile bool servo_sweep_mode;
 
 int main() {
     stdio_init_all();
-    servo_init();
+    servo_init(); // Esto ya configura el timer y el PWM
+    
+    printf("Sistema iniciado, esperando movimiento...\n");
     sleep_ms(2000);
+    servo_sweep_mode = true; // Activamos el modo de barrido para ver el movimiento
 
-    // Interrupción cada 500ms (frecuencia óptima para servos)
-    struct repeating_timer timer;
-    add_repeating_timer_ms(20, timer_callback, NULL, &timer);
     while (true) {
-        // Este es un evento que debo de manejar dentrod e la interrupcion
-        __wfi(); 
+        if (g_flag_timer_servo) {
+            servo_update_sweep();      // Ejecutamos el movimiento
+            g_flag_timer_servo = false; // Reset de la bandera
+        }
+        
+        else{
+            __wfi();
+        }
     }
 }

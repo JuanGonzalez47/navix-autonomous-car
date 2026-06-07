@@ -1,38 +1,44 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/sync.h"
-#include "pico/platform.h"
 #include "radar.h"
 #include "servo.h"
 
-bool servo_timer_callback(struct repeating_timer *t) {
-    servo_update_sweep();
-    return true;
-}
+// Declaramos las variables externas
+extern volatile bool g_flag_timer_servo;
+extern volatile bool servo_sweep_mode;
 
 int main() {
     stdio_init_all();
     
-    // Inicializamos ambos subsistemas
+    // Inicialización
     servo_init();
     radar_init();
     
-    // Timer para el movimiento del servo (20ms)
-    struct repeating_timer servo_timer;
-    add_repeating_timer_ms(20, servo_timer_callback, NULL, &servo_timer);
-    
     sleep_ms(3000); 
     printf("Sistema Servo-Radar iniciado...\n");
+    servo_sweep_mode = true;
 
     while (true) {
-        // Polling del radar
+        // --- 1. GESTIÓN DEL SERVO ---
+        // Chequeamos si el timer disparó la bandera
+        if (g_flag_timer_servo) {
+            servo_update_sweep();      // Ejecutamos el movimiento
+            g_flag_timer_servo = false; // Reset de la bandera
+        }
+
+        // --- 2. GESTIÓN DEL RADAR ---
+        // Chequeamos si el radar tiene datos nuevos
         if (radar_esta_listo()) {
             float dist = radar_leer_cm();
-            // Obtenemos el ángulo usando el getter definido en servo.c
             float angulo = servo_get_angle();
             
             printf("Angulo: %.1f - Distancia: %.2f cm\n", angulo, dist);
-        } else {
+        }
+
+        // --- 3. EFICIENCIA ---
+        // Si no hay nada que hacer, dormimos el procesador hasta la próxima interrupción
+        if (!g_flag_timer_servo && !radar_esta_listo()) {
             __wfi(); 
         }
     }

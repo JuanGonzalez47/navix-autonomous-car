@@ -19,7 +19,7 @@ int main() {
     sleep_ms(2000);
 
     struct repeating_timer timer;
-    add_repeating_timer_ms(30000, timer_callback, NULL, &timer);
+    add_repeating_timer_ms(10000, timer_callback, NULL, &timer);
 
     while (true) {
         printf("Esperando 30 segundos para la secuencia...\n");
