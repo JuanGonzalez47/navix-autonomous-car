@@ -1,6 +1,8 @@
 #include "motores.h"
+#include <stdio.h>
 
 void motores_init() {
+    printf("[Init] Iniciando Motores...\n");
     gpio_init(AIN1); gpio_set_dir(AIN1, GPIO_OUT);
     gpio_init(AIN2); gpio_set_dir(AIN2, GPIO_OUT);
     gpio_init(BIN1); gpio_set_dir(BIN1, GPIO_OUT);
@@ -8,6 +10,7 @@ void motores_init() {
     gpio_init(STBY); gpio_set_dir(STBY, GPIO_OUT);
     
     // Configuración PWM
+    printf("[Init] Configurando PWM para Motores...\n");
     gpio_set_function(PWMA, GPIO_FUNC_PWM);
     gpio_set_function(PWMB, GPIO_FUNC_PWM);
     
@@ -17,8 +20,8 @@ void motores_init() {
     pwm_set_wrap(slice_b, 25000);
     pwm_set_enabled(slice_a, true);
     pwm_set_enabled(slice_b, true);
-    
     gpio_put(STBY, 1); // Habilitar driver
+    printf("[Init] Motores inicializados.\n");
 }
 
 void motores_adelante(uint16_t velocidad) {

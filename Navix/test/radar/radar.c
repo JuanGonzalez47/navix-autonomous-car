@@ -25,6 +25,7 @@ void radar_echo_callback(uint gpio, uint32_t events) {
 }
 
 void radar_init() {
+    printf("[Init] Iniciando Radar...\n");
     gpio_init(TRIG_PIN);
     gpio_set_dir(TRIG_PIN, GPIO_OUT);
     gpio_put(TRIG_PIN, 0);
@@ -33,10 +34,13 @@ void radar_init() {
     gpio_set_dir(ECHO_PIN, GPIO_IN);
     gpio_pull_down(ECHO_PIN); 
     
+    printf("[Init] Configurando IRQs de Radar...\n");
     gpio_set_irq_enabled_with_callback(ECHO_PIN, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true, &radar_echo_callback);
     
     static struct repeating_timer radar_timer;
+    printf("[Init] Configurando Timer de Radar...\n");
     add_repeating_timer_ms(500, radar_timer_callback, NULL, &radar_timer);
+    printf("[Init] Radar finalizado.\n");
 }
 
 bool radar_esta_listo() {
