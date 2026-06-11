@@ -4,10 +4,10 @@
 #include "pico/stdlib.h"
 
 // Configuración de Hardware
-#define UART_GPS uart1
+#define UART_GPS uart0
 #define BAUD_GPS 9600
-#define PIN_GPS_TX 4
-#define PIN_GPS_RX 5
+#define PIN_GPS_TX 12  
+#define PIN_GPS_RX 13   
 
 // Tamaño del buffer para almacenar una sentencia NMEA completa (Ej: $GPRMC,...)
 #define GPS_BUFFER_SIZE 128
