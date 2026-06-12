@@ -5,7 +5,7 @@
 int main() {
     stdio_init_all();
     
-    // Trampa de velocidad (Espera a que abras el terminal)
+    // Trampa de velocidad 
     while (!stdio_usb_connected()) {
         sleep_ms(100);
     }
@@ -21,8 +21,6 @@ int main() {
         float heading = gy511_leer_heading();
         
         printf("[Brújula] Orientación: %.2f grados\n", heading);
-        
-        // Dormimos 200ms para poder leer la pantalla cómodamente
         sleep_ms(200); 
     }
 }

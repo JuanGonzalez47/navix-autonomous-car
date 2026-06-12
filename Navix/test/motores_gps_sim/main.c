@@ -17,10 +17,8 @@
 #define TO_DEG (180.0 / M_PI)
 #define RADIO_TIERRA 6371000.0
 
-// Activa esto para probar dentro del laboratorio sin señal GPS real
 #define MODO_SIMULACION true
 
-// --- LA PIZARRA GLOBAL (Shared Memory) ---
 typedef struct
 {
     bool gps_fijado;
@@ -68,10 +66,7 @@ float calcular_error_giro(float heading_actual, float target_bearing)
         error += 360.0f;
     return error;
 }
-
-// ==========================================
 // CORE 1: SENSORES, TELEMETRÍA Y MATEMÁTICA
-// ==========================================
 void core1_entry(void)
 {
     // Inicialización de periféricos en el núcleo asignado
@@ -192,9 +187,8 @@ void core1_entry(void)
     }
 }
 
-// ==========================================
 // CORE 0: MÁQUINA DE ESTADOS Y MOTORES
-// ==========================================
+
 int main()
 {
     stdio_init_all();

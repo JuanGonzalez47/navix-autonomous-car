@@ -21,7 +21,6 @@ int main() {
         if (gps_procesar_buffer()) {
             printf("[GPS] FIX OK -> Latitud: %.6f | Longitud: %.6f\n", g_datos_gps.latitud, g_datos_gps.longitud);
         } else {
-            // Dormimos el procesador hasta que el GPS envíe la siguiente letra
             __wfi(); 
         }
     }
