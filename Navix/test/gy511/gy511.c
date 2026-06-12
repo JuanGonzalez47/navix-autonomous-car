@@ -38,7 +38,6 @@ float gy511_leer_heading() {
     // int16_t z = (data[2] << 8) | data[3]; // El eje Z se usa si el carro se inclina, por ahora lo ignoramos
     int16_t y = (data[4] << 8) | data[5];
 
-    // --- CALIBRACIÓN DEFINITIVA ---
     // Offsets calculados a partir del giro en tu mesa
     float x_calibrado = (float)x - 245.5;
     float y_calibrado = (float)y - 248.5;
@@ -50,7 +49,6 @@ float gy511_leer_heading() {
     if (heading < 0) {
         heading += 360.0;
     }
-    // ---> ¡AGREGA ESTA LÍNEA! <---
     printf("RAW X: %d | RAW Y: %d\n", x, y);
 
     return heading;
