@@ -1,30 +1,28 @@
-#include "pico/stdlib.h"
-#include "gps.h"
 #include <stdio.h>
+#include "pico/stdlib.h"
+#include "hardware/sync.h"
+#include "gps.h"
 
 int main() {
     stdio_init_all();
-    sleep_ms(3000);
-    printf("--- PRUEBA UNITARIA MÓDULO GNSS ---\n");
+    
+    while (!stdio_usb_connected()) {
+        sleep_ms(100);
+    }
+    sleep_ms(1000);
+
+    printf("--- PRUEBA UNITARIA: MÓDULO GPS (Pines GP12 y GP13) ---\n");
     
     gps_init();
-    printf("UART1 Inicializado a 9600 baud. Esperando ráfagas NMEA...\n");
+    printf("[Sistema] Inicializado. Esperando coordenadas válidas...\n");
 
     while (true) {
-        // Ejecutamos la función de procesamiento continuamente (simulando Core 1)
+        // --- POLLING ---
         if (gps_procesar_buffer()) {
-            printf("[GPS-FIX] Lat: %.6f | Lon: %.6f\n", g_datos_gps.latitud, g_datos_gps.longitud);
+            printf("[GPS] FIX OK -> Latitud: %.6f | Longitud: %.6f\n", g_datos_gps.latitud, g_datos_gps.longitud);
+        } else {
+            // Dormimos el procesador hasta que el GPS envíe la siguiente letra
+            __wfi(); 
         }
-
-        // Cada 2 segundos imprimimos un estatus general de diagnóstico
-        static uint32_t last_print = 0;
-        if (to_ms_since_boot(get_absolute_time()) - last_print > 2000) {
-            last_print = to_ms_since_boot(get_absolute_time());
-            if (!g_datos_gps.fijado) {
-                printf("[GPS-WARN] Buscando satélites... (Saca el carro a un espacio abierto)\n");
-            }
-        }
-        
-        sleep_ms(10); // Evita saturar la CPU en el test unitario
     }
 }
