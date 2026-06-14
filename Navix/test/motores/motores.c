@@ -1,3 +1,11 @@
+/**
+ * @file motores.c
+ * @brief Implementación de las señales de potencia y maniobras del vehículo.
+ * * Gestiona la configuración directa de los registros del hardware de la 
+ * RP2040 para generar las señales PWM y realizar la conmutación de los 
+ * puentes H internos del driver TB6612FNG.
+ */
+
 #include "motores.h"
 #include <stdio.h>
 
@@ -20,6 +28,7 @@ void motores_init() {
     pwm_set_wrap(slice_b, 25000);
     pwm_set_enabled(slice_a, true);
     pwm_set_enabled(slice_b, true);
+    
     gpio_put(STBY, 1); // Habilitar driver
     printf("[Init] Motores inicializados.\n");
 }
@@ -38,7 +47,6 @@ void motores_detener() {
     pwm_set_gpio_level(PWMB, 0);
 }
 
-// Mover hacia atrás
 void motores_atras(uint16_t velocidad) {
     gpio_put(AIN1, 0); gpio_put(AIN2, 1);
     gpio_put(BIN1, 0); gpio_put(BIN2, 1);
@@ -46,7 +54,6 @@ void motores_atras(uint16_t velocidad) {
     pwm_set_gpio_level(PWMB, velocidad);
 }
 
-// Girar derecha (motor izquierdo hacia adelante, derecho hacia atrás)
 void motores_girar_derecha(uint16_t velocidad) {
     // Motor A (Derecho) atrás
     gpio_put(AIN1, 0); gpio_put(AIN2, 1);
@@ -56,7 +63,6 @@ void motores_girar_derecha(uint16_t velocidad) {
     pwm_set_gpio_level(PWMB, velocidad);
 }
 
-// Girar izquierda (motor izquierdo hacia atrás, derecho hacia adelante)
 void motores_girar_izquierda(uint16_t velocidad) {
     // Motor A (Derecho) adelante
     gpio_put(AIN1, 1); gpio_put(AIN2, 0);

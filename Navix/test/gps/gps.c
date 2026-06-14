@@ -1,3 +1,11 @@
+/**
+ * @file gps.c
+ * @brief Implementación del sistema de recepción y parseo GPS.
+ * * Separa la recepción de caracteres en hardware (mediante interrupciones UART) 
+ * del pesado cálculo matemático de conversión de coordenadas NMEA a grados 
+ * decimales, evitando el bloqueo del núcleo procesador.
+ */
+
 #include "gps.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
@@ -6,11 +14,16 @@
 
 volatile char raw_buffer[GPS_BUFFER_SIZE];
 volatile uint16_t buffer_idx = 0;
-volatile bool linea_lista = false; // Bandera de comunicación ISR -> Polling
+volatile bool linea_lista = false; /**< Bandera de comunicación ISR -> Polling */
 
 volatile DatosGPS g_datos_gps = {0.0, 0.0, false, false};
 
-// --- 1. INTERRUPCIÓN (Trabaja sola en el fondo) ---
+/**
+ * @brief Rutina de Servicio de Interrupción (ISR) para recepción UART.
+ * * Se ejecuta automáticamente en el fondo cada vez que llega un byte del GPS.
+ * Ensambla los caracteres en `raw_buffer` hasta encontrar un salto de línea 
+ * ('\\n'), momento en el cual levanta la bandera `linea_lista`.
+ */
 void on_uart_gps_rx() {
     while (uart_is_readable(UART_GPS)) {
         char c = uart_getc(UART_GPS);
@@ -26,7 +39,6 @@ void on_uart_gps_rx() {
     }
 }
 
-// --- 2. INICIALIZACIÓN ---
 void gps_init(void) {
     uart_init(UART_GPS, BAUD_GPS);
     gpio_set_function(PIN_GPS_TX, GPIO_FUNC_UART);
@@ -42,7 +54,6 @@ void gps_init(void) {
     uart_set_irq_enables(UART_GPS, true, false); // Solo RX
 }
 
-// --- 3. POLLING (Lo que llamas desde tu ciclo principal) ---
 bool gps_procesar_buffer(void) {
     // Si la interrupción no ha terminado de armar la línea, salimos inmediatamente
     if (!linea_lista) return false; 

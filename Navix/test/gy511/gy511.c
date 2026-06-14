@@ -1,3 +1,11 @@
+/**
+ * @file gy511.c
+ * @brief Implementación de las lecturas y trigonometría del magnetómetro.
+ * * Gestiona las transacciones I2C bloqueantes para configurar los registros 
+ * del sensor LSM303DLHC y procesa los datos crudos aplicando compensaciones 
+ * físicas para garantizar una orientación estable.
+ */
+
 #include "gy511.h"
 #include <math.h>
 #include <stdio.h>
@@ -30,25 +38,27 @@ float gy511_leer_heading() {
 
     // Le decimos al sensor qué registro queremos leer
     i2c_write_blocking(I2C_PORT, MAG_ADDRESS, &reg, 1, true);
+    
     // Leemos los 6 bytes consecutivos (X_H, X_L, Z_H, Z_L, Y_H, Y_L)
     i2c_read_blocking(I2C_PORT, MAG_ADDRESS, data, 6, false);
 
     // Unimos los bytes altos (Shift left 8 bits) con los bytes bajos (OR lógico)
     int16_t x = (data[0] << 8) | data[1];
-    // int16_t z = (data[2] << 8) | data[3]; // El eje Z se usa si el carro se inclina, por ahora lo ignoramos
+    // int16_t z = (data[2] << 8) | data[3]; // Eje Z ignorado para navegación plana
     int16_t y = (data[4] << 8) | data[5];
 
-    // Offsets calculados a partir del giro en tu mesa
+    // Offsets calculados a partir de calibración Hard Iron
     float x_calibrado = (float)x - 245.5;
     float y_calibrado = (float)y - 248.5;
 
-    // Calcular el ángulo (Heading)
+    // Calcular el ángulo (Heading) trigonométrico
     float heading = atan2(y_calibrado, x_calibrado) * (180.0 / M_PI);
     
     // Normalizar a una brújula de 360 grados (Si da negativo, dar la vuelta)
     if (heading < 0) {
         heading += 360.0;
     }
+    
     printf("RAW X: %d | RAW Y: %d\n", x, y);
 
     return heading;
