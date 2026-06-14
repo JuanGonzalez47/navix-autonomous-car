@@ -1,0 +1,117 @@
+\chapter{🚗 Navix — Vehículo de Navegación Autónoma Multicore}
+\hypertarget{md__r_e_a_d_m_e}{}\label{md__r_e_a_d_m_e}\index{🚗 Navix — Vehículo de Navegación Autónoma Multicore@{🚗 Navix — Vehículo de Navegación Autónoma Multicore}}
+\label{md__r_e_a_d_m_e_autotoc_md0}%
+\Hypertarget{md__r_e_a_d_m_e_autotoc_md0}%
+ Navix es una plataforma robótica móvil autónoma impulsada por el microcontrolador {\bfseries{Raspberry Pi Pico (RP2040)}}. Diseñado con una filosofía de hardware y software modular, Navix resuelve problemas de robótica embebida mediante el uso intensivo de procesamiento concurrente (Dual-\/\+Core).
+
+\DoxyHorRuler{0}
+\hypertarget{md__r_e_a_d_m_e_autotoc_md2}{}\doxysection{\texorpdfstring{📖 a. Descripción del Sistema Final y sus Aplicaciones}{📖 a. Descripción del Sistema Final y sus Aplicaciones}}\label{md__r_e_a_d_m_e_autotoc_md2}
+El sistema final es un vehículo de exploración terrestre capaz de operar en dos modos independientes\+:
+\begin{DoxyEnumerate}
+\item {\bfseries{Evasión Activa de Obstáculos\+:}} Navegación en entornos cerrados utilizando un radar ultrasónico dinámico montado sobre un servomotor, escaneando el entorno en 180° para la toma de decisiones en tiempo real.
+\item {\bfseries{Navegación Global (Go-\/\+To-\/\+Goal)\+:}} Desplazamiento hacia coordenadas satelitales remotas ingresadas vía Bluetooth, calculando la distancia (Haversine) y corrigiendo el rumbo dinámicamente mediante una brújula magnética.
+\end{DoxyEnumerate}
+
+{\bfseries{Aplicaciones\+:}} Bases para robótica de exploración espacial (rovers), automatización logística en almacenes y sistemas de micro-\/navegación agrícola.
+
+\DoxyHorRuler{0}
+\hypertarget{md__r_e_a_d_m_e_autotoc_md4}{}\doxysection{\texorpdfstring{🛠 b. Arquitectura de Hardware (Diagrama de Bloques)}{🛠 b. Arquitectura de Hardware (Diagrama de Bloques)}}\label{md__r_e_a_d_m_e_autotoc_md4}
+El sistema centraliza el procesamiento en la RP2040 operando a 3.\+3V, integrando múltiples buses de comunicación en paralelo\+:
+
+\tabulinesep=1mm
+\begin{longtabu}spread 0pt [c]{*{3}{|X[-1]}|}
+\hline
+\cellcolor{\tableheadbgcolor}\textbf{ Componente   }&\cellcolor{\tableheadbgcolor}\textbf{ Función en el Sistema   }&\cellcolor{\tableheadbgcolor}\textbf{ Protocolo / Pin    }\\\cline{1-3}
+\endfirsthead
+\hline
+\endfoot
+\hline
+\cellcolor{\tableheadbgcolor}\textbf{ Componente   }&\cellcolor{\tableheadbgcolor}\textbf{ Función en el Sistema   }&\cellcolor{\tableheadbgcolor}\textbf{ Protocolo / Pin    }\\\cline{1-3}
+\endhead
+{\bfseries{Raspberry Pi Pico}}   &Cerebro Central (RP2040) Dual-\/\+Core   &N/A    \\\cline{1-3}
+{\bfseries{TB6612\+FNG}}   &Driver de Potencia de Motores   &PWM / GPIO    \\\cline{1-3}
+{\bfseries{HC-\/\+SR04 + SG90}}   &Radar Ultrasónico Activo   &GPIO (Trig/\+Echo) + PWM    \\\cline{1-3}
+{\bfseries{GY-\/511}}   &Brújula Magnética (Corrección de Rumbo)   &I2C    \\\cline{1-3}
+{\bfseries{NEO-\/6M}}   &Módulo GPS (Posicionamiento)   &UART    \\\cline{1-3}
+{\bfseries{HC-\/05}}   &Módulo Bluetooth (Telemetría/\+Comandos)   &UART   \\\cline{1-3}
+\end{longtabu}
+
+
+{\bfseries{Explicación HW\+:}} El diseño aísla la lógica (Power Bank 5V regulado a 3.\+3V) de la etapa de potencia de los motores (Li-\/ion 7.\+4V). Se implementaron divisores de tensión para proteger los pines de la Pico frente a las señales de retorno de 5V del HC-\/\+SR04 y del Bluetooth.
+
+\DoxyHorRuler{0}
+\hypertarget{md__r_e_a_d_m_e_autotoc_md6}{}\doxysection{\texorpdfstring{💻 c. Arquitectura de Firmware (Diagrama de Flujo Multicore)}{💻 c. Arquitectura de Firmware (Diagrama de Flujo Multicore)}}\label{md__r_e_a_d_m_e_autotoc_md6}
+Para cumplir con la exigencia de tiempo real sin utilizar un RTOS, el firmware se dividió utilizando la librería {\ttfamily pico/multicore.\+h}.
+
+
+\begin{DoxyItemize}
+\item {\bfseries{CORE 1 (Transductor y Matemática)\+:}} \texorpdfstring{$\ast$}{*} Dedicado a la sensórica lenta e ininterrumpida.
+\begin{DoxyItemize}
+\item {\itshape Flujo\+:} Escucha comandos Bluetooth (UART) \$\textbackslash{}rightarrow\$ Parsea tramas NMEA del GPS \$\textbackslash{}rightarrow\$ Lee orientación I2C \$\textbackslash{}rightarrow\$ Ejecuta barridos de barrera ultrasónica \$\textbackslash{}rightarrow\$ Calcula vectores de error matemáticos.
+\end{DoxyItemize}
+\item {\bfseries{CORE 0 (Lazo de Control y Motores)\+:}} \texorpdfstring{$\ast$}{*} Dedicado a la respuesta física en tiempo real.
+\begin{DoxyItemize}
+\item {\itshape Flujo\+:} Ejecuta una máquina de estados reactiva \$\textbackslash{}rightarrow\$ Toma decisiones de evasión o corrección de rumbo \$\textbackslash{}rightarrow\$ Genera señales PWM hacia el driver TB6612\+FNG.
+\end{DoxyItemize}
+\item {\bfseries{Sincronización de Datos (Spinlocks)\+:}} Para evitar condiciones de carrera ({\itshape Race Conditions}) al compartir la memoria SRAM, se descartó el uso de memorias FIFO. En su lugar, el sistema utiliza {\bfseries{Spinlocks de Hardware}} del bloque SIO de la RP2040, garantizando operaciones atómicas de bloqueo al escribir/leer variables globales compartidas.
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md__r_e_a_d_m_e_autotoc_md8}{}\doxysection{\texorpdfstring{🎯 d. Análisis de Requisitos Funcionales}{🎯 d. Análisis de Requisitos Funcionales}}\label{md__r_e_a_d_m_e_autotoc_md8}
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Requisito\+: Navegación evitando obstáculos.}}
+\begin{DoxyItemize}
+\item {\itshape Estado\+:} {\bfseries{CUMPLIDO.}} La máquina de estados detecta objetos a menos de la distancia umbral, detiene el chasis, escanea el sector izquierdo y derecho, y decide la ruta despejada de forma autónoma.
+\end{DoxyItemize}
+\item {\bfseries{Requisito\+: Enrutamiento mediante coordenadas GPS.}}
+\begin{DoxyItemize}
+\item {\itshape Estado\+:} {\bfseries{CUMPLIDO (Validación HIL).}} Se detectó que el módulo GPS comercial presenta un error circular (CEP) superior a 25 metros en interiores por efecto {\itshape multipath}. Para aislar esta variable, se implementó una simulación {\itshape Hardware-\/in-\/the-\/\+Loop (HIL)} congelando el origen satelital por software. Esto permitió demostrar físicamente el éxito de la algoritmia de la brújula, la telemetría Bluetooth y los cálculos esféricos en tiempo real al rotar el chasis.
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md__r_e_a_d_m_e_autotoc_md10}{}\doxysection{\texorpdfstring{⚙️ e. Análisis de Requisitos No Funcionales}{⚙️ e. Análisis de Requisitos No Funcionales}}\label{md__r_e_a_d_m_e_autotoc_md10}
+
+\begin{DoxyItemize}
+\item {\bfseries{Operación en Tiempo Real\+:}} Logrado mediante la división de carga en dos núcleos. El control de motores nunca experimenta latencia por culpa de las esperas de comunicación UART/\+I2C.
+\item {\bfseries{Modularidad y Mantenibilidad\+:}} El código C está estrictamente modularizado ({\ttfamily radar.\+c}, {\ttfamily gps.\+c}, {\ttfamily motores.\+c}, etc.) y documentado.
+\item {\bfseries{Tolerancia al Ruido (Área de Mejora)\+:}} Se identificó que el ruido electromagnético (EMI) inducido por los motores interfiere ocasionalmente con las tramas del bus I2C (GY-\/511). Esto justifica la necesidad futura de aislar las pistas en un diseño de placa de circuito impreso (PCB) dedicada.
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md__r_e_a_d_m_e_autotoc_md12}{}\doxysection{\texorpdfstring{💰 f. Análisis de Costo (Prototipo vs. Producción)}{💰 f. Análisis de Costo (Prototipo vs. Producción)}}\label{md__r_e_a_d_m_e_autotoc_md12}
+\tabulinesep=1mm
+\begin{longtabu}spread 0pt [c]{*{3}{|X[-1]}|}
+\hline
+\cellcolor{\tableheadbgcolor}\textbf{ Etapa   }&\cellcolor{\tableheadbgcolor}\textbf{ Descripción   }&\cellcolor{\tableheadbgcolor}\textbf{ Costo Estimado (COP)    }\\\cline{1-3}
+\endfirsthead
+\hline
+\endfoot
+\hline
+\cellcolor{\tableheadbgcolor}\textbf{ Etapa   }&\cellcolor{\tableheadbgcolor}\textbf{ Descripción   }&\cellcolor{\tableheadbgcolor}\textbf{ Costo Estimado (COP)    }\\\cline{1-3}
+\endhead
+{\bfseries{Prototipo (Actual)}}   &Uso de módulos de desarrollo individuales (RPi Pico, placas breakout para sensores y drivers), chasis acrílico, baterías sueltas y protoboards/jumpers.   &\texorpdfstring{$\sim$}{\string~}\$180,000    \\\cline{1-3}
+{\bfseries{Producción en Masa}}   &Fabricación de una PCB multicapa FR-\/4 integrando el microcontrolador RP2040 directamente (IC), puente H SMD, y chips sensores a bordo. Moldes de inyección plástica para el chasis. Compras de volumen (\texorpdfstring{$>$}{>}1000 unidades).   &\texorpdfstring{$\sim$}{\string~}\$60,000 / unidad   \\\cline{1-3}
+\end{longtabu}
+
+
+{\itshape Conclusión Económica\+:} Pasar del prototipo a la producción masiva reduce los costos en un \texorpdfstring{$\sim$}{\string~}66\% por unidad, además de resolver los problemas de inductancia parásita y ruido EMI causados por los cables Du\+Pont.
+
+\DoxyHorRuler{0}
+\hypertarget{md__r_e_a_d_m_e_autotoc_md14}{}\doxysection{\texorpdfstring{👥 g. Organización del Equipo y Flujo de Trabajo}{👥 g. Organización del Equipo y Flujo de Trabajo}}\label{md__r_e_a_d_m_e_autotoc_md14}
+El desarrollo se gestionó aplicando metodologías ágiles y control de versiones distribuido.
+
+
+\begin{DoxyItemize}
+\item {\bfseries{Estrategia de Código\+:}} Se utilizó un repositorio en Git\+Hub con protección de la rama {\ttfamily main}.
+\item {\bfseries{Distribución de Roles\+:}}
+\begin{DoxyItemize}
+\item {\itshape Hardware y Potencia\+:} Ensamblaje del chasis, cálculos de divisores de tensión y pruebas de torque/corriente.
+\item {\itshape Firmware Core 0\+:} Programación de la máquina de estados, control del driver PWM e interrupciones de tiempo.
+\item {\itshape Firmware Core 1 y Sincronización\+:} Desarrollo de la matemática de navegación, parseo de protocolos y configuración de {\itshape Spinlocks} de hardware.
+\end{DoxyItemize}
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+ {\itshape Este reporte representa el estado final del proyecto entregado para la asignatura de Electrónica Digital III.} 
